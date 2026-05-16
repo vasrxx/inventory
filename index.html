@@ -3,485 +3,224 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dynamic Google Sheet Dashboard</title>
+<title>Container Inventory Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <style>
-:root{
---bg:#f8fafc;
---card:#fff;
---line:#e2e8f0;
---blue:#2563eb;
---green:#22c55e;
---orange:#f59e0b;
---red:#ef4444;
---text:#0f172a;
---muted:#64748b;
-}
+:root{--bg:#f8fafc;--card:#fff;--line:#e2e8f0;--blue:#2563eb;--green:#22c55e;--orange:#f59e0b;--red:#ef4444;--text:#0f172a;--muted:#64748b}
 *{box-sizing:border-box}
-body{
-margin:0;
-font-family:Inter,Arial,sans-serif;
-background:var(--bg);
-color:var(--text);
-}
-.container{
-max-width:1400px;
-margin:auto;
-padding:24px;
-}
-.top{
-display:flex;
-justify-content:space-between;
-align-items:flex-start;
-gap:20px;
-flex-wrap:wrap;
-margin-bottom:20px;
-}
-h1{
-margin:0;
-font-size:34px;
-}
-.subtitle{
-color:var(--muted);
-margin-top:8px;
-}
-.connect{
-background:white;
-border:1px solid var(--line);
-padding:18px;
-border-radius:18px;
-display:flex;
-gap:12px;
-flex-wrap:wrap;
-align-items:center;
-}
-input{
-padding:12px 14px;
-border-radius:12px;
-border:1px solid var(--line);
-width:420px;
-max-width:100%;
-}
-button{
-padding:12px 16px;
-border:none;
-border-radius:12px;
-background:var(--blue);
-color:white;
-cursor:pointer;
-font-weight:700;
-}
-.cards{
-display:grid;
-grid-template-columns:repeat(5,1fr);
-gap:14px;
-margin-bottom:16px;
-}
-.card{
-background:var(--card);
-border:1px solid var(--line);
-border-radius:18px;
-padding:20px;
-}
-.kpi-label{
-font-size:13px;
-color:var(--muted);
-font-weight:700;
-}
-.kpi-value{
-font-size:36px;
-font-weight:900;
-margin-top:10px;
-}
-.grid{
-display:grid;
-grid-template-columns:1.3fr .8fr;
-gap:16px;
-margin-bottom:16px;
-}
-.chart-box{
-background:white;
-padding:20px;
-border-radius:18px;
-border:1px solid var(--line);
-}
-.table-box{
-background:white;
-padding:20px;
-border-radius:18px;
-border:1px solid var(--line);
-overflow:auto;
-}
-table{
-width:100%;
-border-collapse:collapse;
-font-size:13px;
-}
-th,td{
-padding:10px;
-border-bottom:1px solid var(--line);
-text-align:right;
-}
-th:first-child,td:first-child{
-text-align:left;
-font-weight:700;
-}
-th{
-background:#f1f5f9;
-}
-.alert{
-padding:12px;
-border-radius:12px;
-margin-bottom:10px;
-font-size:13px;
-font-weight:600;
-}
-.red{background:#fee2e2;color:#991b1b}
-.orange{background:#ffedd5;color:#9a3412}
-.green{background:#dcfce7;color:#166534}
-@media(max-width:1000px){
-.cards{grid-template-columns:repeat(2,1fr)}
-.grid{grid-template-columns:1fr}
-}
-@media(max-width:600px){
-.cards{grid-template-columns:1fr}
-}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:1400px;margin:auto;padding:24px}
+.top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:20px}
+h1{margin:0;font-size:34px}.subtitle{color:var(--muted);margin-top:8px}
+.connect{background:white;border:1px solid var(--line);padding:18px;border-radius:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+input{padding:12px 14px;border-radius:12px;border:1px solid var(--line);width:520px;max-width:100%}
+button{padding:12px 16px;border:none;border-radius:12px;background:var(--blue);color:white;cursor:pointer;font-weight:700}
+.status{width:100%;font-size:13px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+.kpi-label{font-size:13px;color:var(--muted);font-weight:700}.kpi-value{font-size:36px;font-weight:900;margin-top:10px}
+.grid{display:grid;grid-template-columns:1.3fr .8fr;gap:16px;margin-bottom:16px}
+.box{background:white;padding:20px;border-radius:18px;border:1px solid var(--line);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;font-weight:700}th{background:#f1f5f9}
+.alert{padding:12px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600}.red{background:#fee2e2;color:#991b1b}.orange{background:#ffedd5;color:#9a3412}.green{background:#dcfce7;color:#166534}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}@media(max-width:600px){.cards{grid-template-columns:1fr}}
 </style>
 </head>
-
 <body>
-
 <div class="container">
+  <div class="top">
+    <div>
+      <h1>Container Inventory Dashboard</h1>
+      <div class="subtitle">Paste Google Sheet link แล้วกด Connect Sheet</div>
+    </div>
+    <div class="connect">
+      <input id="sheetUrl" placeholder="วางลิงก์ Google Sheet ตรงนี้">
+      <button onclick="connectSheet()">Connect Sheet</button>
+      <div class="status" id="status">พร้อมใช้งาน</div>
+    </div>
+  </div>
 
-<div class="top">
-<div>
-<h1>Container Inventory Dashboard</h1>
-<div class="subtitle">
-ใส่ลิงก์ Google Sheet เพื่อดึงข้อมูล inventory realtime
-</div>
-</div>
+  <div class="cards">
+    <div class="card"><div class="kpi-label">Total Stock</div><div class="kpi-value" id="kpiStock">-</div></div>
+    <div class="card"><div class="kpi-label">20DC</div><div class="kpi-value" id="kpi20">-</div></div>
+    <div class="card"><div class="kpi-label">40HC</div><div class="kpi-value" id="kpi40">-</div></div>
+    <div class="card"><div class="kpi-label">DM</div><div class="kpi-value" id="kpiDM">-</div></div>
+    <div class="card"><div class="kpi-label">Pending Pickup</div><div class="kpi-value" id="kpiPending">-</div></div>
+  </div>
 
-<div class="connect">
-<input id="sheetUrl" placeholder="Paste Google Sheet URL here">
-<button onclick="connectSheet()">Connect Sheet</button>
-</div>
-</div>
+  <div class="grid">
+    <div class="box"><h3>Inventory by Depot</h3><canvas id="depotChart"></canvas></div>
+    <div class="box"><h3>Inventory by Size</h3><canvas id="sizeChart"></canvas></div>
+  </div>
 
-<div class="cards">
-<div class="card">
-<div class="kpi-label">Total Stock</div>
-<div class="kpi-value" id="kpiStock">-</div>
-</div>
-
-<div class="card">
-<div class="kpi-label">20DC</div>
-<div class="kpi-value" id="kpi20">-</div>
-</div>
-
-<div class="card">
-<div class="kpi-label">40HC</div>
-<div class="kpi-value" id="kpi40">-</div>
-</div>
-
-<div class="card">
-<div class="kpi-label">DM</div>
-<div class="kpi-value" id="kpiDM">-</div>
-</div>
-
-<div class="card">
-<div class="kpi-label">Pending Pickup</div>
-<div class="kpi-value" id="kpiPending">-</div>
-</div>
-</div>
-
-<div class="grid">
-<div class="chart-box">
-<h3>Inventory by Depot</h3>
-<canvas id="depotChart"></canvas>
-</div>
-
-<div class="chart-box">
-<h3>Inventory by Size</h3>
-<canvas id="sizeChart"></canvas>
-</div>
-</div>
-
-<div class="grid">
-<div class="table-box">
-<h3>Inventory Table</h3>
-<table id="inventoryTable"></table>
-</div>
-
-<div class="table-box">
-<h3>Alerts</h3>
-<div id="alerts"></div>
-</div>
-</div>
-
+  <div class="grid">
+    <div class="box"><h3>Inventory Table</h3><table id="inventoryTable"></table></div>
+    <div class="box"><h3>Alerts</h3><div id="alerts"></div></div>
+  </div>
 </div>
 
 <script>
+let depotChart, sizeChart;
 
-let depotChart;
-let sizeChart;
-
-function fmt(n){
-return Number(n || 0).toLocaleString();
-}
-
-function num(v){
-const n = Number(String(v || '').replace(/[^0-9.-]/g,''));
-return isNaN(n) ? 0 : n;
-}
+function setStatus(t){document.getElementById('status').textContent=t}
+function fmt(n){return Number(n||0).toLocaleString()}
+function num(v){const n=Number(String(v??'').replace(/[^0-9.-]/g,''));return isNaN(n)?0:n}
+function clean(v){return String(v??'').replace(/\s+/g,' ').trim()}
 
 function extractSheetInfo(url){
-const match = url.match(/spreadsheets\\/d\\/([^\\/]+)/);
-const gidMatch = url.match(/gid=([0-9]+)/);
-
-if(!match) return null;
-
-return {
-sheetId: match[1],
-gid: gidMatch ? gidMatch[1] : '0'
-};
+  const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  const gidMatch = url.match(/[?&#]gid=([0-9]+)/);
+  if(!idMatch) return null;
+  return {sheetId:idMatch[1], gid:gidMatch ? gidMatch[1] : '0'};
 }
 
-function connectSheet(){
-
-const url = document.getElementById('sheetUrl').value;
-
-if(!url){
-alert('กรุณาใส่ Google Sheet URL');
-return;
+function parseGviz(text){
+  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
+  const table = json.table;
+  const rows = table.rows.map(r => (r.c || []).map(c => c ? (c.f ?? c.v ?? '') : ''));
+  return rows;
 }
 
-const info = extractSheetInfo(url);
-
-if(!info){
-alert('ลิงก์ Google Sheet ไม่ถูกต้อง');
-return;
+function findHeaderRow(rows){
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const joined = rows[i].map(clean).join('|').toLowerCase();
+    if(joined.includes('size') && (joined.includes('av') || joined.includes('dmg') || joined.includes('pending') || joined.includes('balance'))) return i;
+  }
+  return 0;
 }
 
-const csvUrl =
-`https://docs.google.com/spreadsheets/d/${info.sheetId}/export?format=csv&gid=${info.gid}`;
+function convertRows(rows){
+  const h = findHeaderRow(rows);
+  const headers = rows[h].map(clean);
+  let lastDepot = '';
+  const out = [];
+  for(let i=h+1;i<rows.length;i++){
+    const row = rows[i];
+    let obj = {};
+    headers.forEach((key, idx) => { if(key) obj[key] = row[idx] ?? '' });
 
-Papa.parse(csvUrl,{
-download:true,
-header:true,
-skipEmptyLines:true,
+    let depot = clean(row[0]);
+    if(!depot || depot.toLowerCase()==='total') {
+      if(depot.toLowerCase()==='total') continue;
+      depot = lastDepot;
+    } else {
+      lastDepot = depot;
+    }
 
-complete:(res)=>{
+    const size = clean(obj['Size'] || obj['size'] || row[1]);
+    if(!depot || !size || size.toLowerCase()==='size') continue;
 
-const rows = res.data;
-
-const data = rows.map(r=>({
-
-depot:
-r.Depot ||
-r.BKK ||
-r.Location ||
-'',
-
-size:
-String(r.Size || ''),
-
-av:
-num(r.AV),
-
-dm:
-num(r.DMG || r.DM),
-
-pending:
-num(r['Pending pick up'] || r['Pending Pickup']),
-
-balance:
-num(r.Balance),
-
-long30:
-num(r['Long stay >30 days'])
-
-})).filter(x=>x.depot && x.size);
-
-render(data);
-
-},
-
-error:()=>{
-alert('อ่านชีทไม่ได้ กรุณา Publish to web');
+    out.push({
+      depot,
+      size,
+      av: num(obj['AV'] ?? obj['Available'] ?? row[2]),
+      dm: num(obj['DMG'] ?? obj['DM'] ?? row[3]),
+      pending: num(obj['Pending pick up'] ?? obj['Pending Pickup'] ?? row[5]),
+      balance: num(obj['Balance'] ?? row[6]),
+      long30: num(obj['Long stay >30 days']),
+      long60: num(obj['Long stay >60 days']),
+      long90: num(obj['Long stay >90 days'])
+    });
+  }
+  return out;
 }
 
-});
+async function connectSheet(){
+  const url = document.getElementById('sheetUrl').value.trim();
+  if(!url){alert('กรุณาใส่ Google Sheet URL');return}
+  const info = extractSheetInfo(url);
+  if(!info){alert('ลิงก์ Google Sheet ไม่ถูกต้อง');return}
 
+  localStorage.setItem('lastSheetUrl', url);
+  setStatus('กำลังโหลดข้อมูล...');
+
+  const gvizUrl = `https://docs.google.com/spreadsheets/d/${info.sheetId}/gviz/tq?tqx=out:json&gid=${info.gid}&t=${Date.now()}`;
+
+  try{
+    const res = await fetch(gvizUrl);
+    const text = await res.text();
+
+    if(text.toLowerCase().includes('<html') || text.toLowerCase().includes('sign in')){
+      throw new Error('Sheet ยังไม่ public หรือยังไม่ได้ Publish to web');
+    }
+
+    const rows = parseGviz(text);
+    const data = convertRows(rows);
+
+    if(!data.length){
+      throw new Error('อ่านข้อมูลได้ แต่จับ column ไม่เจอ กรุณาเช็คว่ามี Depot / Size / AV / DMG / Pending / Balance');
+    }
+
+    render(data);
+    setStatus(`โหลดสำเร็จ ${data.length} rows | ${new Date().toLocaleString('th-TH')}`);
+  }catch(e){
+    console.error(e);
+    setStatus('โหลดไม่สำเร็จ: ' + e.message);
+    alert('ยังโหลดข้อมูลไม่ได้: ' + e.message);
+  }
 }
 
 function render(data){
+  const total20=data.filter(x=>x.size.includes('20')).reduce((s,x)=>s+x.av+x.dm,0);
+  const total40=data.filter(x=>x.size.includes('40')).reduce((s,x)=>s+x.av+x.dm,0);
+  const totalDM=data.reduce((s,x)=>s+x.dm,0);
+  const totalPending=data.reduce((s,x)=>s+x.pending,0);
 
-const total20 =
-data.filter(x=>x.size.includes('20'))
-.reduce((s,x)=>s+x.av+x.dm,0);
+  kpiStock.textContent=fmt(total20+total40);
+  kpi20.textContent=fmt(total20);
+  kpi40.textContent=fmt(total40);
+  kpiDM.textContent=fmt(totalDM);
+  kpiPending.textContent=fmt(totalPending);
 
-const total40 =
-data.filter(x=>x.size.includes('40'))
-.reduce((s,x)=>s+x.av+x.dm,0);
+  const depotMap={};
+  data.forEach(x=>{
+    if(!depotMap[x.depot]) depotMap[x.depot]={dc20:0,hc40:0,dm:0,pending:0,balance:0,long30:0,long60:0,long90:0};
+    const stock=x.av+x.dm;
+    if(x.size.includes('20')) depotMap[x.depot].dc20+=stock;
+    if(x.size.includes('40')) depotMap[x.depot].hc40+=stock;
+    depotMap[x.depot].dm+=x.dm;
+    depotMap[x.depot].pending+=x.pending;
+    depotMap[x.depot].balance+=x.balance;
+    depotMap[x.depot].long30+=x.long30;
+    depotMap[x.depot].long60+=x.long60;
+    depotMap[x.depot].long90+=x.long90;
+  });
 
-const totalDM =
-data.reduce((s,x)=>s+x.dm,0);
+  const depots=Object.keys(depotMap);
 
-const totalPending =
-data.reduce((s,x)=>s+x.pending,0);
+  if(depotChart) depotChart.destroy();
+  depotChart=new Chart(document.getElementById('depotChart'),{
+    type:'bar',
+    data:{labels:depots,datasets:[
+      {label:'20DC',data:depots.map(d=>depotMap[d].dc20),backgroundColor:'#2563eb'},
+      {label:'40HC',data:depots.map(d=>depotMap[d].hc40),backgroundColor:'#22c55e'}
+    ]},
+    options:{responsive:true,scales:{y:{beginAtZero:true}}}
+  });
 
-document.getElementById('kpiStock').textContent =
-fmt(total20 + total40);
+  if(sizeChart) sizeChart.destroy();
+  sizeChart=new Chart(document.getElementById('sizeChart'),{
+    type:'doughnut',
+    data:{labels:['20DC','40HC','DM'],datasets:[{data:[total20,total40,totalDM],backgroundColor:['#2563eb','#22c55e','#f59e0b']}]}
+  });
 
-document.getElementById('kpi20').textContent =
-fmt(total20);
+  inventoryTable.innerHTML=`
+  <thead><tr><th>Depot</th><th>20DC</th><th>40HC</th><th>DM</th><th>Pending</th><th>Balance</th></tr></thead>
+  <tbody>${depots.map(d=>`<tr><td>${d}</td><td>${fmt(depotMap[d].dc20)}</td><td>${fmt(depotMap[d].hc40)}</td><td>${fmt(depotMap[d].dm)}</td><td>${fmt(depotMap[d].pending)}</td><td>${fmt(depotMap[d].balance)}</td></tr>`).join('')}</tbody>`;
 
-document.getElementById('kpi40').textContent =
-fmt(total40);
-
-document.getElementById('kpiDM').textContent =
-fmt(totalDM);
-
-document.getElementById('kpiPending').textContent =
-fmt(totalPending);
-
-const depotMap = {};
-
-data.forEach(x=>{
-
-if(!depotMap[x.depot]){
-depotMap[x.depot] = {
-dc20:0,
-hc40:0,
-dm:0,
-balance:0,
-pending:0,
-long30:0
-};
+  const alertList=[];
+  depots.forEach(d=>{
+    if(depotMap[d].balance<0) alertList.push(`<div class="alert red">${d} balance ติดลบ (${fmt(depotMap[d].balance)})</div>`);
+    if(depotMap[d].long90>0) alertList.push(`<div class="alert red">${d} long stay >90 days (${fmt(depotMap[d].long90)})</div>`);
+    if(depotMap[d].long60>20) alertList.push(`<div class="alert orange">${d} long stay >60 days สูง (${fmt(depotMap[d].long60)})</div>`);
+    if(depotMap[d].long30>50) alertList.push(`<div class="alert orange">${d} long stay >30 days สูง (${fmt(depotMap[d].long30)})</div>`);
+  });
+  alerts.innerHTML = alertList.length ? alertList.join('') : '<div class="alert green">ไม่มี alert สำคัญ</div>';
 }
 
-const stock = x.av + x.dm;
-
-if(x.size.includes('20'))
-depotMap[x.depot].dc20 += stock;
-
-if(x.size.includes('40'))
-depotMap[x.depot].hc40 += stock;
-
-depotMap[x.depot].dm += x.dm;
-depotMap[x.depot].balance += x.balance;
-depotMap[x.depot].pending += x.pending;
-depotMap[x.depot].long30 += x.long30;
-
-});
-
-const depots = Object.keys(depotMap);
-
-if(depotChart) depotChart.destroy();
-
-depotChart = new Chart(
-document.getElementById('depotChart'),
-{
-type:'bar',
-data:{
-labels:depots,
-datasets:[
-{
-label:'20DC',
-data:depots.map(d=>depotMap[d].dc20),
-backgroundColor:'#2563eb'
-},
-{
-label:'40HC',
-data:depots.map(d=>depotMap[d].hc40),
-backgroundColor:'#22c55e'
-}
-]
-}
-}
-);
-
-if(sizeChart) sizeChart.destroy();
-
-sizeChart = new Chart(
-document.getElementById('sizeChart'),
-{
-type:'doughnut',
-data:{
-labels:['20DC','40HC','DM'],
-datasets:[{
-data:[total20,total40,totalDM],
-backgroundColor:[
-'#2563eb',
-'#22c55e',
-'#f59e0b'
-]
-}]
-}
-}
-);
-
-document.getElementById('inventoryTable').innerHTML =
-`
-<thead>
-<tr>
-<th>Depot</th>
-<th>20DC</th>
-<th>40HC</th>
-<th>DM</th>
-<th>Pending</th>
-<th>Balance</th>
-</tr>
-</thead>
-
-<tbody>
-${depots.map(d=>`
-<tr>
-<td>${d}</td>
-<td>${fmt(depotMap[d].dc20)}</td>
-<td>${fmt(depotMap[d].hc40)}</td>
-<td>${fmt(depotMap[d].dm)}</td>
-<td>${fmt(depotMap[d].pending)}</td>
-<td>${fmt(depotMap[d].balance)}</td>
-</tr>
-`).join('')}
-</tbody>
-`;
-
-const alerts = [];
-
-depots.forEach(d=>{
-
-if(depotMap[d].balance < 0){
-alerts.push(
-`<div class="alert red">
-${d} balance ติดลบ (${fmt(depotMap[d].balance)})
-</div>`
-);
-}
-
-if(depotMap[d].long30 > 50){
-alerts.push(
-`<div class="alert orange">
-${d} long stay >30 days สูง (${fmt(depotMap[d].long30)})
-</div>`
-);
-}
-
-});
-
-if(alerts.length === 0){
-alerts.push('<div class="alert green">ไม่มี alert สำคัญ</div>');
-}
-
-document.getElementById('alerts').innerHTML =
-alerts.join('');
-
-}
-
+const last = localStorage.getItem('lastSheetUrl');
+if(last) document.getElementById('sheetUrl').value = last;
 </script>
-
 </body>
 </html>
