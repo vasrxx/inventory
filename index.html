@@ -49,6 +49,7 @@
     .alert{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;font-size:13px}
     .neg{color:var(--red);font-weight:900}
     .pos{color:var(--green);font-weight:900}
+    .note{font-size:12px;color:var(--muted);margin-top:10px}
     @media(max-width:1100px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto}.sidebox{position:static;margin-top:20px}.cards{grid-template-columns:repeat(2,1fr)}.grid,.grid2{grid-template-columns:1fr}}
     @media(max-width:640px){main{padding:18px}.top{align-items:flex-start;flex-direction:column}.cards{grid-template-columns:1fr}}
   </style>
@@ -66,7 +67,7 @@
     </nav>
     <div class="sidebox">
       <b>Data Source</b><br/>
-      Google Sheets<br/><br/>
+      Google Sheet GID: 338832589<br/><br/>
       <span id="refreshText">Auto refresh: ON</span>
     </div>
   </aside>
@@ -85,7 +86,7 @@
     </div>
 
     <section class="cards">
-      <div class="card kpi"><div class="icon">▥</div><div><div class="label">Total Stock</div><div class="value" id="kpiStock">-</div><div class="unit">TEUs</div></div></div>
+      <div class="card kpi"><div class="icon">▥</div><div><div class="label">Total Stock</div><div class="value" id="kpiStock">-</div><div class="unit">units</div></div></div>
       <div class="card kpi"><div class="icon green">▤</div><div><div class="label">20DC</div><div class="value" id="kpi20">-</div><div class="unit">units</div></div></div>
       <div class="card kpi"><div class="icon purple">▦</div><div><div class="label">40HC</div><div class="value" id="kpi40">-</div><div class="unit">units</div></div></div>
       <div class="card kpi"><div class="icon orange">⚠</div><div><div class="label">Total DM</div><div class="value" id="kpiDM">-</div><div class="unit">units</div></div></div>
@@ -104,7 +105,7 @@
     </section>
 
     <section class="grid2">
-      <div class="card" id="alerts"><h2>Alerts</h2><div class="alert-list" id="alertsList"></div></div>
+      <div class="card" id="alerts"><h2>Alerts</h2><div class="alert-list" id="alertsList"></div><div class="note">Alert จะขึ้นเมื่อ Balance ติดลบ หรือมี Long Stay สูง</div></div>
       <div class="card" id="longstay"><h2>Long Stay Containers</h2><div style="overflow:auto"><table id="longStayTable"></table></div></div>
     </section>
   </main>
@@ -112,38 +113,46 @@
 
 <script>
 const SHEET_ID = "1nMHkRb5uCqxDpaakA1W_TG93bTUqEIdMkspQvy_UHzc";
-const GID = "0";
+const GID = "338832589";
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
 let depotChart, sizeChart, statusChart;
 let raw = [];
 
 function num(v){ const n = Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return isNaN(n) ? 0 : n; }
+function clean(s){ return String(s ?? '').replace(/\s+/g,' ').trim(); }
 function pick(row, keys){
+  const allKeys = Object.keys(row);
   for(const k of keys){
-    const found = Object.keys(row).find(x => x.trim().toLowerCase() === k.toLowerCase());
-    if(found) return row[found];
+    const found = allKeys.find(x => clean(x).toLowerCase() === clean(k).toLowerCase());
+    if(found !== undefined) return row[found];
   }
-  return "";
+  const partial = allKeys.find(x => keys.some(k => clean(x).toLowerCase().includes(clean(k).toLowerCase())));
+  return partial ? row[partial] : "";
 }
 function fmt(n){ return Number(n || 0).toLocaleString(); }
 
 function normalize(rows){
-  return rows.map(r => ({
-    depot: pick(r, ['Depot','BKK','Location']) || pick(r, ['']).trim(),
-    size: String(pick(r, ['Size','size'])).trim(),
-    av: num(pick(r, ['AV','Available'])),
-    dm: num(pick(r, ['DMG','DM','Damage'])),
-    pending: num(pick(r, ['Pending pick up','Pending Pickup','Pending'])),
-    balance: num(pick(r, ['Balance'])),
-    long30: num(pick(r, ['Long stay >30 days','>30 days','Long30'])),
-    long60: num(pick(r, ['Long stay >60 days','>60 days','Long60'])),
-    long90: num(pick(r, ['Long stay >90 days','>90 days','Long90'])),
-    vessel1: num(pick(r, ['FER305 ETD 21 MAY','FER305'])),
-    vessel2: num(pick(r, ['EOM ETD 25 MAY','EOM'])),
-    vessel3: num(pick(r, ['FFR524 ETD 26 MAY','FFR524'])),
-    vessel4: num(pick(r, ['ZGN ETD 31 MAY','ZGN'])),
-  })).filter(x => x.depot && x.size && x.depot.toLowerCase() !== 'total');
+  return rows.map(r => {
+    const depot = clean(pick(r, ['Depot','Location','CY','Place']));
+    const size = clean(pick(r, ['Size','Container Size','Type']));
+    return {
+      depot,
+      size,
+      av: num(pick(r, ['AV','Available','Stock'])),
+      dm: num(pick(r, ['DMG','DM','Damage'])),
+      pending: num(pick(r, ['Pending pick up','Pending Pickup','Pending'])),
+      balance: num(pick(r, ['Balance','BAL'])),
+      long30: num(pick(r, ['Long stay >30 days','>30 days','Long30','30 days'])),
+      long60: num(pick(r, ['Long stay >60 days','>60 days','Long60','60 days'])),
+      long90: num(pick(r, ['Long stay >90 days','>90 days','Long90','90 days'])),
+      // Vessel columns: edit/add names here if sheet changes
+      vessel1: num(pick(r, ['FER305 ETD 21 MAY','FER305'])),
+      vessel2: num(pick(r, ['EOM ETD 25 MAY','EOM'])),
+      vessel3: num(pick(r, ['FFR524 ETD 26 MAY','FFR524'])),
+      vessel4: num(pick(r, ['ZGN ETD 31 MAY','ZGN'])),
+    }
+  }).filter(x => x.depot && x.size && x.depot.toLowerCase() !== 'total');
 }
 
 function groupByDepot(data){
