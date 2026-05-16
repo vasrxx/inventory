@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Container Inventory Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root{
+      --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b;
+      --blue:#2563eb; --green:#22c55e; --orange:#f59e0b; --red:#ef4444;
+      --line:#e2e8f0; --purple:#8b5cf6;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+    aside{background:#fff;border-right:1px solid var(--line);padding:24px 16px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;gap:12px;align-items:center;font-weight:800;font-size:18px;margin-bottom:32px}
+    .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--blue),#60a5fa);display:grid;place-items:center;color:white}
+    nav a{display:flex;gap:12px;align-items:center;padding:13px 14px;border-radius:12px;color:#0f172a;text-decoration:none;margin:6px 0;font-size:14px}
+    nav a.active, nav a:hover{background:var(--blue);color:white}
+    .sidebox{position:absolute;bottom:18px;left:16px;right:16px;border:1px solid var(--line);border-radius:14px;padding:14px;background:#f8fafc;font-size:13px;color:var(--muted)}
+    main{padding:24px 28px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
+    h1{font-size:28px;margin:0 0 4px}
+    .subtitle{color:var(--muted);font-size:14px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    select,input,button{border:1px solid var(--line);background:white;border-radius:12px;padding:10px 14px;font-size:14px}
+    button{background:var(--blue);color:white;border-color:var(--blue);cursor:pointer}
+    .cards{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:14px;margin-bottom:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+    .kpi{display:flex;align-items:center;gap:14px}
+    .icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;background:#dbeafe;color:var(--blue)}
+    .icon.green{background:#dcfce7;color:var(--green)} .icon.orange{background:#ffedd5;color:var(--orange)}
+    .icon.red{background:#fee2e2;color:var(--red)} .icon.purple{background:#ede9fe;color:var(--purple)}
+    .label{color:var(--muted);font-size:13px;font-weight:700}.value{font-size:30px;font-weight:900;margin-top:6px}.unit{font-size:13px;color:var(--muted);font-weight:600}
+    .grid{display:grid;grid-template-columns:1.25fr .8fr .8fr;gap:14px;margin-bottom:14px}
+    .grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-bottom:14px}
+    .card h2{font-size:16px;margin:0 0 16px}
+    canvas{max-height:270px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border-bottom:1px solid var(--line);padding:10px;text-align:right;white-space:nowrap}
+    th:first-child,td:first-child{text-align:left;font-weight:700}
+    th{background:#f1f5f9;color:#334155;font-size:12px}
+    .pill{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
+    .ok{background:#dcfce7;color:#166534}.warn{background:#ffedd5;color:#9a3412}.bad{background:#fee2e2;color:#991b1b}
+    .alert-list{display:grid;gap:10px}
+    .alert{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;font-size:13px}
+    .neg{color:var(--red);font-weight:900}
+    .pos{color:var(--green);font-weight:900}
+    @media(max-width:1100px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto}.sidebox{position:static;margin-top:20px}.cards{grid-template-columns:repeat(2,1fr)}.grid,.grid2{grid-template-columns:1fr}}
+    @media(max-width:640px){main{padding:18px}.top{align-items:flex-start;flex-direction:column}.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand"><div class="logo">▣</div><div>Container Inventory<br/>Dashboard</div></div>
+    <nav>
+      <a class="active" href="#">Overview</a>
+      <a href="#inventory">Inventory</a>
+      <a href="#booking">Bookings</a>
+      <a href="#longstay">Long Stay</a>
+      <a href="#alerts">Alerts</a>
+    </nav>
+    <div class="sidebox">
+      <b>Data Source</b><br/>
+      Google Sheets<br/><br/>
+      <span id="refreshText">Auto refresh: ON</span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <div>
+        <h1>Overview</h1>
+        <div class="subtitle">Inventory ตู้ปัจจุบันแต่ละ depot และ booking ลูกค้าแต่ละลำเรือที่รอใช้ตู้</div>
+      </div>
+      <div class="controls">
+        <select id="depotFilter"><option value="ALL">All Depots</option></select>
+        <select id="sizeFilter"><option value="ALL">All Sizes</option><option value="20">20DC</option><option value="40">40HC</option></select>
+        <button onclick="loadData()">Refresh</button>
+      </div>
+    </div>
+
+    <section class="cards">
+      <div class="card kpi"><div class="icon">▥</div><div><div class="label">Total Stock</div><div class="value" id="kpiStock">-</div><div class="unit">TEUs</div></div></div>
+      <div class="card kpi"><div class="icon green">▤</div><div><div class="label">20DC</div><div class="value" id="kpi20">-</div><div class="unit">units</div></div></div>
+      <div class="card kpi"><div class="icon purple">▦</div><div><div class="label">40HC</div><div class="value" id="kpi40">-</div><div class="unit">units</div></div></div>
+      <div class="card kpi"><div class="icon orange">⚠</div><div><div class="label">Total DM</div><div class="value" id="kpiDM">-</div><div class="unit">units</div></div></div>
+      <div class="card kpi"><div class="icon red">⌛</div><div><div class="label">Pending Pickup</div><div class="value" id="kpiPending">-</div><div class="unit">units</div></div></div>
+    </section>
+
+    <section class="grid">
+      <div class="card"><h2>Inventory by Depot</h2><canvas id="depotChart"></canvas></div>
+      <div class="card"><h2>Inventory by Size</h2><canvas id="sizeChart"></canvas></div>
+      <div class="card"><h2>Inventory Status</h2><canvas id="statusChart"></canvas></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card" id="inventory"><h2>Inventory by Depot</h2><div style="overflow:auto"><table id="inventoryTable"></table></div></div>
+      <div class="card" id="booking"><h2>Bookings by Vessel / ETD</h2><div style="overflow:auto"><table id="bookingTable"></table></div></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card" id="alerts"><h2>Alerts</h2><div class="alert-list" id="alertsList"></div></div>
+      <div class="card" id="longstay"><h2>Long Stay Containers</h2><div style="overflow:auto"><table id="longStayTable"></table></div></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SHEET_ID = "1nMHkRb5uCqxDpaakA1W_TG93bTUqEIdMkspQvy_UHzc";
+const GID = "0";
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+let depotChart, sizeChart, statusChart;
+let raw = [];
+
+function num(v){ const n = Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return isNaN(n) ? 0 : n; }
+function pick(row, keys){
+  for(const k of keys){
+    const found = Object.keys(row).find(x => x.trim().toLowerCase() === k.toLowerCase());
+    if(found) return row[found];
+  }
+  return "";
+}
+function fmt(n){ return Number(n || 0).toLocaleString(); }
+
+function normalize(rows){
+  return rows.map(r => ({
+    depot: pick(r, ['Depot','BKK','Location']) || pick(r, ['']).trim(),
+    size: String(pick(r, ['Size','size'])).trim(),
+    av: num(pick(r, ['AV','Available'])),
+    dm: num(pick(r, ['DMG','DM','Damage'])),
+    pending: num(pick(r, ['Pending pick up','Pending Pickup','Pending'])),
+    balance: num(pick(r, ['Balance'])),
+    long30: num(pick(r, ['Long stay >30 days','>30 days','Long30'])),
+    long60: num(pick(r, ['Long stay >60 days','>60 days','Long60'])),
+    long90: num(pick(r, ['Long stay >90 days','>90 days','Long90'])),
+    vessel1: num(pick(r, ['FER305 ETD 21 MAY','FER305'])),
+    vessel2: num(pick(r, ['EOM ETD 25 MAY','EOM'])),
+    vessel3: num(pick(r, ['FFR524 ETD 26 MAY','FFR524'])),
+    vessel4: num(pick(r, ['ZGN ETD 31 MAY','ZGN'])),
+  })).filter(x => x.depot && x.size && x.depot.toLowerCase() !== 'total');
+}
+
+function groupByDepot(data){
+  const m = {};
+  data.forEach(x => {
+    if(!m[x.depot]) m[x.depot] = {depot:x.depot, dc20:0, hc40:0, av:0, dm:0, pending:0, balance:0, long30:0, long60:0, long90:0};
+    const stock = x.av + x.dm;
+    if(x.size.includes('20')) m[x.depot].dc20 += stock;
+    if(x.size.includes('40')) m[x.depot].hc40 += stock;
+    m[x.depot].av += x.av; m[x.depot].dm += x.dm; m[x.depot].pending += x.pending; m[x.depot].balance += x.balance;
+    m[x.depot].long30 += x.long30; m[x.depot].long60 += x.long60; m[x.depot].long90 += x.long90;
+  });
+  return Object.values(m);
+}
+
+function drawChart(current){
+  const depots = groupByDepot(current);
+  if(depotChart) depotChart.destroy();
+  depotChart = new Chart(document.getElementById('depotChart'), {
+    type:'bar',
+    data:{labels:depots.map(x=>x.depot), datasets:[
+      {label:'20DC', data:depots.map(x=>x.dc20), backgroundColor:'#2563eb'},
+      {label:'40HC', data:depots.map(x=>x.hc40), backgroundColor:'#22c55e'}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}
+  });
+
+  const total20 = current.filter(x=>x.size.includes('20')).reduce((s,x)=>s+x.av+x.dm,0);
+  const total40 = current.filter(x=>x.size.includes('40')).reduce((s,x)=>s+x.av+x.dm,0);
+  const totalDM = current.reduce((s,x)=>s+x.dm,0);
+
+  if(sizeChart) sizeChart.destroy();
+  sizeChart = new Chart(document.getElementById('sizeChart'), {
+    type:'doughnut',
+    data:{labels:['20DC','40HC','DM'], datasets:[{data:[total20,total40,totalDM], backgroundColor:['#2563eb','#22c55e','#f59e0b']}]},
+    options:{plugins:{legend:{position:'right'}}}
+  });
+
+  const av = current.reduce((s,x)=>s+x.av,0), dm = current.reduce((s,x)=>s+x.dm,0), pending = current.reduce((s,x)=>s+x.pending,0), balance = current.reduce((s,x)=>s+x.balance,0);
+  if(statusChart) statusChart.destroy();
+  statusChart = new Chart(document.getElementById('statusChart'), {
+    type:'bar',
+    data:{labels:['AV','DM','Pending','Balance'], datasets:[{label:'Units', data:[av,dm,pending,balance], backgroundColor:['#2563eb','#f59e0b','#8b5cf6','#22c55e']}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}
+  });
+}
+
+function renderTables(current){
+  const depots = groupByDepot(current);
+  document.getElementById('inventoryTable').innerHTML = `
+    <thead><tr><th>Depot</th><th>20DC</th><th>40HC</th><th>AV</th><th>DM</th><th>Pending</th><th>Balance</th><th>Total</th></tr></thead>
+    <tbody>${depots.map(x=>`<tr><td>${x.depot}</td><td>${fmt(x.dc20)}</td><td>${fmt(x.hc40)}</td><td>${fmt(x.av)}</td><td>${fmt(x.dm)}</td><td>${fmt(x.pending)}</td><td class="${x.balance<0?'neg':'pos'}">${fmt(x.balance)}</td><td><b>${fmt(x.dc20+x.hc40)}</b></td></tr>`).join('')}</tbody>`;
+
+  const vessels = [
+    ['FER305','ETD 21 MAY','vessel1'], ['EOM','ETD 25 MAY','vessel2'], ['FFR524','ETD 26 MAY','vessel3'], ['ZGN','ETD 31 MAY','vessel4']
+  ].map(v => ({name:v[0], etd:v[1], total:current.reduce((s,x)=>s+x[v[2]],0)}));
+  document.getElementById('bookingTable').innerHTML = `
+    <thead><tr><th>Vessel</th><th>ETD</th><th>Pending Volume</th><th>Status</th></tr></thead>
+    <tbody>${vessels.map(x=>`<tr><td>${x.name}</td><td>${x.etd}</td><td>${fmt(x.total)}</td><td><span class="pill ${x.total>100?'warn':'ok'}">${x.total>100?'High':'OK'}</span></td></tr>`).join('')}</tbody>`;
+
+  const longRows = depots.filter(x => x.long30 || x.long60 || x.long90);
+  document.getElementById('longStayTable').innerHTML = `
+    <thead><tr><th>Depot</th><th>&gt;30</th><th>&gt;60</th><th>&gt;90</th><th>Risk</th></tr></thead>
+    <tbody>${longRows.map(x=>`<tr><td>${x.depot}</td><td>${fmt(x.long30)}</td><td>${fmt(x.long60)}</td><td>${fmt(x.long90)}</td><td><span class="pill ${x.long90>0?'bad':x.long60>0?'warn':'ok'}">${x.long90>0?'Critical':x.long60>0?'Watch':'OK'}</span></td></tr>`).join('')}</tbody>`;
+}
+
+function renderAlerts(current){
+  const depots = groupByDepot(current);
+  const alerts = [];
+  depots.forEach(x => {
+    if(x.balance < 0) alerts.push([`Depot ${x.depot} balance ติดลบ`, `${fmt(x.balance)} units`, 'bad']);
+    if(x.long90 > 0) alerts.push([`Depot ${x.depot} มี long stay >90 days`, `${fmt(x.long90)} units`, 'bad']);
+    if(x.long60 > 20) alerts.push([`Depot ${x.depot} มี long stay >60 days สูง`, `${fmt(x.long60)} units`, 'warn']);
+  });
+  if(!alerts.length) alerts.push(['ไม่มี alert สำคัญตอนนี้','OK','ok']);
+  document.getElementById('alertsList').innerHTML = alerts.slice(0,8).map(a => `<div class="alert"><span>${a[0]}</span><span class="pill ${a[2]}">${a[1]}</span></div>`).join('');
+}
+
+function applyFilters(){
+  const depot = document.getElementById('depotFilter').value;
+  const size = document.getElementById('sizeFilter').value;
+  let current = raw;
+  if(depot !== 'ALL') current = current.filter(x => x.depot === depot);
+  if(size !== 'ALL') current = current.filter(x => x.size.includes(size));
+
+  const total20 = current.filter(x=>x.size.includes('20')).reduce((s,x)=>s+x.av+x.dm,0);
+  const total40 = current.filter(x=>x.size.includes('40')).reduce((s,x)=>s+x.av+x.dm,0);
+  document.getElementById('kpiStock').textContent = fmt(total20 + total40);
+  document.getElementById('kpi20').textContent = fmt(total20);
+  document.getElementById('kpi40').textContent = fmt(total40);
+  document.getElementById('kpiDM').textContent = fmt(current.reduce((s,x)=>s+x.dm,0));
+  document.getElementById('kpiPending').textContent = fmt(current.reduce((s,x)=>s+x.pending,0));
+  drawChart(current); renderTables(current); renderAlerts(current);
+}
+
+async function loadData(){
+  Papa.parse(CSV_URL, {
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete: (res) => {
+      raw = normalize(res.data);
+      const depots = [...new Set(raw.map(x=>x.depot))].sort();
+      document.getElementById('depotFilter').innerHTML = '<option value="ALL">All Depots</option>' + depots.map(d=>`<option>${d}</option>`).join('');
+      applyFilters();
+      document.getElementById('refreshText').textContent = 'Last refresh: ' + new Date().toLocaleString('th-TH');
+    },
+    error: () => alert('อ่าน Google Sheet ไม่ได้: กรุณา Publish to web หรือแชร์เป็น Anyone with the link')
+  });
+}
+document.getElementById('depotFilter').addEventListener('change', applyFilters);
+document.getElementById('sizeFilter').addEventListener('change', applyFilters);
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>
